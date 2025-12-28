@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../lib/prisma');
 const { pickupSchema, updateSchema, requestSchema } = require('../lib/validation');
-const { validateQuantity, validateWholeQuantity, validateRequestQuantity, getAllowedLocations, getIncrementForLocation } = require('../lib/inventory');
+const { validateQuantity, validateWholeQuantity, getAllowedLocations, getIncrementForLocation } = require('../lib/inventory');
 const { syncInventoryState, appendActivityLogRow } = require('../lib/sheets');
 
 // GET / - Dashboard
@@ -498,7 +498,8 @@ router.post('/request', async (req, res, next) => {
         }
 
         // Validate quantity against increment rules for requests
-        const validation = validateRequestQuantity(chemical, qty);
+        // Request must be whole numbers only
+        const validation = validateWholeQuantity(chemical, 'SHELF', qty);
         if (!validation.valid) {
           errors.push(`${chemical.name}: ${validation.error}`);
           continue;

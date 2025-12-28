@@ -46,6 +46,14 @@ function openUpdateModal() {
   switchUpdateTab('SHELF'); // Reset to SHELF tab
 }
 
+// Toggle note field visibility
+function toggleNoteField(noteGroupId) {
+  const noteGroup = document.getElementById(noteGroupId);
+  if (noteGroup) {
+    noteGroup.style.display = noteGroup.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
 // Helper function to generate quantity options for dropdown
 function generateQuantityOptions(increment, max = 20) {
   const options = [];
@@ -261,9 +269,24 @@ function openFulfillModal() {
       
       html += `
         </div>
+        <div class="form-group" id="fulfillNoteGroup" style="display: none;">
+          <label>Note (optional)</label>
+          <input type="text" id="fulfillNote" name="note">
+        </div>
         <div class="form-actions">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('fulfillModal')">Cancel</button>
-          <button type="submit" class="btn btn-primary">Fulfill Request</button>
+          <button type="button" class="btn-icon" onclick="toggleNoteField('fulfillNoteGroup')" title="Add note">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </button>
+          <div class="form-actions-buttons">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('fulfillModal')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Fulfill Request</button>
+          </div>
         </div>
         <input type="hidden" name="batchId" value="${requestData.batchId}">
       </form>`;
@@ -291,12 +314,16 @@ function openFulfillModal() {
             }
           });
           
+          const fulfillNoteInput = document.getElementById('fulfillNote');
+          const fulfillNote = fulfillNoteInput ? fulfillNoteInput.value : '';
+          
           fetch('/requests/fulfill', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               batchId: batchId,
               pickups: pickups,
+              note: fulfillNote || undefined,
             }),
           })
           .then(res => res.json())
@@ -432,12 +459,12 @@ document.addEventListener('DOMContentLoaded', function() {
       e.preventDefault();
       
       const items = [];
-      const inputs = requestForm.querySelectorAll('.request-qty');
-      inputs.forEach(input => {
-        const qty = parseFloat(input.value) || 0;
+      const selects = requestForm.querySelectorAll('.request-qty');
+      selects.forEach(select => {
+        const qty = parseFloat(select.value) || 0;
         if (qty > 0) {
           items.push({
-            chemicalId: input.dataset.chemicalId,
+            chemicalId: select.dataset.chemicalId,
             qty: qty,
           });
         }

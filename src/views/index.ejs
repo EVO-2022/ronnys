@@ -160,13 +160,24 @@
             </div>
           <% }); %>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="pickupNoteGroup" style="display: none;">
           <label for="pickupNote">Note (optional)</label>
           <input type="text" id="pickupNote" name="note">
         </div>
         <div class="form-actions">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('pickupModal')">Cancel</button>
-          <button type="submit" class="btn btn-primary">Submit</button>
+          <button type="button" class="btn-icon" onclick="toggleNoteField('pickupNoteGroup')" title="Add note">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </button>
+          <div class="form-actions-buttons">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('pickupModal')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Submit</button>
+          </div>
         </div>
       </form>
     </div>
@@ -196,29 +207,45 @@
               <div class="chemical-inputs">
                 <div class="form-group">
                   <label>Quantity (optional)</label>
-                  <input
-                    type="number"
+                  <select
                     class="request-qty"
                     name="qty"
                     data-chemical-id="<%= chemical.id %>"
                     data-unit="<%= chemical.unit %>"
-                    data-increment="<%= chemical.unit === 'BUCKET' ? 0.25 : chemical.increment %>"
-                    min="0"
-                    step="<%= chemical.unit === 'BUCKET' ? 0.25 : chemical.increment %>"
-                    value="0"
+                    data-increment="1.0"
                   >
+                    <option value="0">--</option>
+                    <% 
+                      // Request uses whole numbers only (1.0 increment)
+                      const requestQtyOptions = generateQuantityOptions(1.0, 50, true);
+                    %>
+                    <% requestQtyOptions.forEach(qty => { %>
+                      <option value="<%= qty %>"><%= qty %></option>
+                    <% }); %>
+                  </select>
                 </div>
               </div>
             </div>
           <% }); %>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="requestNoteGroup" style="display: none;">
           <label for="requestNote">Note (optional)</label>
           <input type="text" id="requestNote" name="note">
         </div>
         <div class="form-actions">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('requestModal')">Cancel</button>
-          <button type="submit" class="btn btn-primary">Submit</button>
+          <button type="button" class="btn-icon" onclick="toggleNoteField('requestNoteGroup')" title="Add note">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </button>
+          <div class="form-actions-buttons">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('requestModal')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Submit</button>
+          </div>
         </div>
       </form>
     </div>
@@ -233,22 +260,36 @@
       <span class="close" onclick="closeModal('updateModal')">&times;</span>
     </div>
     <div class="modal-body">
-      <div class="tabs">
-        <button class="tab-button active" data-location="SHELF" onclick="switchUpdateTab('SHELF')">On the Shelf</button>
-        <button class="tab-button" data-location="LINE" onclick="switchUpdateTab('LINE')">On the Line</button>
-      </div>
       <form id="updateForm" action="/update" method="POST">
         <input type="hidden" id="updateLocation" name="location" value="SHELF">
+        
+        <!-- Tabs -->
+        <div class="tabs">
+          <button type="button" class="tab-button active" data-location="SHELF" onclick="switchUpdateTab('SHELF')">On the Shelf</button>
+          <button type="button" class="tab-button" data-location="LINE" onclick="switchUpdateTab('LINE')">On the Line</button>
+        </div>
+
         <div class="chemical-list" id="updateChemicalList">
           <!-- Chemicals will be populated by JS based on selected tab -->
         </div>
-        <div class="form-group">
+        <div class="form-group" id="updateNoteGroup" style="display: none;">
           <label for="updateNote">Note (optional)</label>
           <input type="text" id="updateNote" name="note">
         </div>
         <div class="form-actions">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('updateModal')">Cancel</button>
-          <button type="submit" class="btn btn-primary">Submit</button>
+          <button type="button" class="btn-icon" onclick="toggleNoteField('updateNoteGroup')" title="Add note">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </button>
+          <div class="form-actions-buttons">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('updateModal')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Submit</button>
+          </div>
         </div>
       </form>
     </div>
