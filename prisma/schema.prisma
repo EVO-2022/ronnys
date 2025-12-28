@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Chemical {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  unit           String   // BARREL, BUCKET, or BOX
+  increment      Float
+  trackOnShelf   Boolean  @default(true)
+  trackOnLine    Boolean  @default(false)
+  gallonsPerUnit Float?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  inventory       InventoryState?
+  activityLogs    ActivityLog[]
+  requestItems    RequestItem[]
+}
+
+model InventoryState {
+  chemicalId String   @id
+  shelfQty   Float    @default(0)
+  lineQty    Float    @default(0)
+  updatedAt  DateTime @updatedAt
+
+  chemical   Chemical @relation(fields: [chemicalId], references: [id], onDelete: Cascade)
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  type       String   // PICKUP, REQUEST, or UPDATE
+  chemicalId String
+  location   String?  // SHELF or LINE
+  setQty     Float?
+  addQty     Float?
+  requestQty Float?
+  note       String?
+  createdBy  String?
+  createdAt  DateTime @default(now())
+
+  chemical   Chemical   @relation(fields: [chemicalId], references: [id], onDelete: Cascade)
+
+  @@index([type, createdAt])
+  @@index([chemicalId, createdAt])
+}
+
+model RequestBatch {
+  id          String        @id @default(cuid())
+  status      String        @default("OPEN") // OPEN or FULFILLED
+  note        String?
+  createdBy   String?
+  createdAt   DateTime      @default(now())
+  fulfilledAt DateTime?
+  items       RequestItem[]
+
+  @@index([status, createdAt])
+}
+
+model RequestItem {
+  id           String       @id @default(cuid())
+  batchId      String
+  chemicalId   String
+  requestedQty Float
+  pickedUpQty  Float?       @default(0)
+
+  batch        RequestBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  chemical     Chemical     @relation(fields: [chemicalId], references: [id], onDelete: Cascade)
+
+  @@index([batchId])
+  @@index([chemicalId])
+}
+

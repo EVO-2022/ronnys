@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ronny's Car Wash - Chemical Inventory</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-content">
+        <% if (typeof hasOpenRequest !== 'undefined' && hasOpenRequest) { %>
+          <div class="pickup-notification" onclick="openFulfillModal()" title="Pickup Requested">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8z"/>
+              <circle cx="5.5" cy="18.5" r="2.5"/>
+              <circle cx="18.5" cy="18.5" r="2.5"/>
+            </svg>
+            <span>Pickup Requested</span>
+          </div>
+        <% } %>
+        <h1>Ronny's Car Wash</h1>
+      </div>
+      <h2>Chemical Inventory</h2>
+    </header>
+    <main>
+<!-- Current Inventory Tally Box -->
+<div class="tally-box" onclick="openInventoryModal()">
+  <div class="tally-main">
+    <div class="tally-label">Current Inventory</div>
+    <div class="inventory-updated">Last updated: <%= typeof lastUpdatedFormatted !== 'undefined' ? lastUpdatedFormatted : '—' %></div>
+    <div class="tally-value"><%= totals.totalUnits %> Units</div>
+  </div>
+  <div class="tally-details">
+    <span><%= totals.totalGallons %> Gallons</span>
+    <span><%= totals.totalBoxes %> Boxes</span>
+    <span><%= totals.totalBarrels %> Barrels</span>
+    <span><%= totals.totalBuckets %> Buckets</span>
+  </div>
+  <div class="tally-hint">Click to view breakdown</div>
+</div>
+
+<!-- Action Buttons -->
+<div class="action-buttons">
+  <button class="btn btn-primary" onclick="openPickupModal()">Pick up chemicals</button>
+  <button class="btn btn-primary" onclick="openRequestModal()">Request chemicals</button>
+  <button class="btn btn-primary" onclick="openUpdateModal()">Update inventory</button>
+</div>
+
+<!-- Activity Log -->
+<div class="activity-log">
+  <h3>Activity Log</h3>
+  <ul class="log-list">
+    <% if (activityLogs.length === 0) { %>
+      <li class="log-entry empty">No activity yet</li>
+    <% } else { %>
+      <% activityLogs.forEach(log => { %>
+        <li class="log-entry clickable" onclick="openLogDetailModal('<%= log.id %>')">
+          <%= log.message %>
+          <% if (log.note) { %>
+            <span class="log-note"> - <%= log.note %></span>
+          <% } %>
+        </li>
+      <% }); %>
+    <% } %>
+  </ul>
+</div>
+
+<!-- Inventory Breakdown Modal -->
+<div id="inventoryModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Inventory Breakdown</h2>
+      <span class="close" onclick="closeModal('inventoryModal')">&times;</span>
+    </div>
+    <div class="modal-body">
+      <table class="inventory-table">
+        <thead>
+          <tr>
+            <th>Chemical</th>
+            <th>On the Shelf</th>
+            <th>On the Line</th>
+            <th>Combined</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% chemicals.forEach((chemical, index) => { %>
+            <% const inv = chemical.inventory || { shelfQty: 0, lineQty: 0 }; %>
+            <% const combined = inv.shelfQty + inv.lineQty; %>
+            <tr>
+              <td><%= chemical.name %></td>
+              <td><%= inv.shelfQty.toFixed(2) %></td>
+              <td><%= chemical.trackOnLine ? inv.lineQty.toFixed(2) : 'N/A' %></td>
+              <td><strong><%= combined.toFixed(2) %></strong></td>
+            </tr>
+            <% 
+              // Add separator after: Prizm Gold, RLC, Air Freshener - Cool Water
+              const separatorAfter = ['Prizm Gold', 'RLC', 'Air Freshener - Cool Water'];
+              if (separatorAfter.includes(chemical.name) && index < chemicals.length - 1) {
+            %>
+            <tr class="separator-row">
+              <td colspan="4"><div class="table-separator"></div></td>
+            </tr>
+            <% } %>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Pickup Modal -->
+<div id="pickupModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Pick up chemicals</h2>
+      <span class="close" onclick="closeModal('pickupModal')">&times;</span>
+    </div>
+    <div class="modal-body">
+      <form id="pickupForm" action="/pickup" method="POST">
+        <div class="chemical-list">
+          <% chemicals.forEach((chemical, index) => { %>
+            <% 
+              // Add separator after: Prizm Gold, RLC, Air Freshener - Cool Water
+              const separatorAfter = ['Prizm Gold', 'RLC', 'Air Freshener - Cool Water'];
+              if (separatorAfter.includes(chemical.name) && index < chemicals.length - 1) {
+            %>
+            <div class="chemical-separator"></div>
+            <% } %>
+            <div class="chemical-item" data-chemical-id="<%= chemical.id %>">
+              <div class="chemical-name"><%= chemical.name %></div>
+              <% if (chemical.trackOnShelf || chemical.trackOnLine) { %>
+                <!-- Pickup always goes to shelf - hidden input -->
+                <input type="hidden" name="pickups[<%= chemical.id %>][location]" value="SHELF">
+                <div class="chemical-inputs single-input">
+                  <div class="form-group">
+                    <label>Quantity</label>
+                    <select 
+                      class="pickup-qty" 
+                      name="pickups[<%= chemical.id %>][qty]"
+                      data-chemical-id="<%= chemical.id %>"
+                    >
+                      <option value="">--</option>
+                      <% 
+                        // Pickup always uses whole quantities (1.0 increment), skip 0
+                        const pickupQtyOptions = generateQuantityOptions(1.0, 50, true);
+                      %>
+                      <% pickupQtyOptions.forEach(qty => { %>
+                        <option value="<%= qty %>"><%= qty %></option>
+                      <% }); %>
+                    </select>
+                  </div>
+                </div>
+              <% } else { %>
+                <div class="chemical-inputs">
+                  <div class="no-tracking">Not tracked</div>
+                </div>
+              <% } %>
+            </div>
+          <% }); %>
+        </div>
+        <div class="form-group">
+          <label for="pickupNote">Note (optional)</label>
+          <input type="text" id="pickupNote" name="note">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('pickupModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Request Modal -->
+<div id="requestModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Request chemicals</h2>
+      <span class="close" onclick="closeModal('requestModal')">&times;</span>
+    </div>
+    <div class="modal-body">
+      <form id="requestForm" action="/request" method="POST">
+        <div class="chemical-list">
+          <% chemicals.forEach((chemical, index) => { %>
+            <% 
+              // Add separator after: Prizm Gold, RLC, Air Freshener - Cool Water
+              const separatorAfter = ['Prizm Gold', 'RLC', 'Air Freshener - Cool Water'];
+              if (separatorAfter.includes(chemical.name) && index < chemicals.length - 1) {
+            %>
+            <div class="chemical-separator"></div>
+            <% } %>
+            <div class="chemical-item" data-chemical-id="<%= chemical.id %>">
+              <div class="chemical-name"><%= chemical.name %></div>
+              <div class="chemical-inputs">
+                <div class="form-group">
+                  <label>Quantity (optional)</label>
+                  <input
+                    type="number"
+                    class="request-qty"
+                    name="qty"
+                    data-chemical-id="<%= chemical.id %>"
+                    data-unit="<%= chemical.unit %>"
+                    data-increment="<%= chemical.unit === 'BUCKET' ? 0.25 : chemical.increment %>"
+                    min="0"
+                    step="<%= chemical.unit === 'BUCKET' ? 0.25 : chemical.increment %>"
+                    value="0"
+                  >
+                </div>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+        <div class="form-group">
+          <label for="requestNote">Note (optional)</label>
+          <input type="text" id="requestNote" name="note">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('requestModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Update Modal -->
+<div id="updateModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Update inventory</h2>
+      <span class="close" onclick="closeModal('updateModal')">&times;</span>
+    </div>
+    <div class="modal-body">
+      <div class="tabs">
+        <button class="tab-button active" data-location="SHELF" onclick="switchUpdateTab('SHELF')">On the Shelf</button>
+        <button class="tab-button" data-location="LINE" onclick="switchUpdateTab('LINE')">On the Line</button>
+      </div>
+      <form id="updateForm" action="/update" method="POST">
+        <input type="hidden" id="updateLocation" name="location" value="SHELF">
+        <div class="chemical-list" id="updateChemicalList">
+          <!-- Chemicals will be populated by JS based on selected tab -->
+        </div>
+        <div class="form-group">
+          <label for="updateNote">Note (optional)</label>
+          <input type="text" id="updateNote" name="note">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('updateModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Fulfill Request Modal -->
+<div id="fulfillModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Fulfill Request</h2>
+      <span class="close" onclick="closeModal('fulfillModal')">&times;</span>
+    </div>
+    <div class="modal-body">
+      <div id="fulfillContent">
+        <p>Loading request details...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Log Detail Modal -->
+<div id="logDetailModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Activity Log Details</h2>
+      <span class="close" onclick="closeModal('logDetailModal')">&times;</span>
+    </div>
+    <div class="modal-body">
+      <div id="logDetailContent">
+        <p>Loading details...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Make chemicals data available to JS
+  window.chemicalsData = <%- JSON.stringify(chemicals) %>;
+  window.hasOpenRequest = <%- typeof hasOpenRequest !== 'undefined' && hasOpenRequest ? 'true' : 'false' %>;
+  window.openRequestBatchId = <%- typeof openRequestBatchId !== 'undefined' && openRequestBatchId ? JSON.stringify(openRequestBatchId) : 'null' %>;
+</script>
+    </main>
+    <% if (typeof sheetsEnabled !== 'undefined' && sheetsEnabled) { %>
+      <footer style="text-align: center; padding: 20px; color: #888; font-size: 14px; border-top: 1px solid #444; margin-top: 30px;">
+        <span style="color: #4caf50;">●</span> Sheets: Connected
+      </footer>
+    <% } %>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
+
