@@ -77,3 +77,41 @@ model RequestItem {
   @@index([chemicalId])
 }
 
+model MaintenanceTask {
+  id          String    @id @default(cuid())
+  description String
+  status      String    @default("OPEN") // OPEN or COMPLETED
+  urgent      Boolean   @default(false)
+  note        String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([status, createdAt])
+}
+
+model RepairLog {
+  id          String    @id @default(cuid())
+  description String
+  date        DateTime
+  cost        Float?
+  note        String?
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+
+  @@index([date])
+}
+
+model PartsReceived {
+  id          String    @id @default(cuid())
+  description String
+  quantity    Float?
+  unit        String?
+  date        DateTime
+  cost        Float?
+  note        String?
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+
+  @@index([date])
+}
+

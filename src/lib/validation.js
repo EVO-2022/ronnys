@@ -24,9 +24,36 @@ const requestSchema = z.object({
   note: z.string().nullable().optional(),
 });
 
+const maintenanceTaskSchema = z.object({
+  description: z.string().min(1, 'Description is required'),
+  urgent: z.boolean().optional().default(false),
+  note: z.string().nullable().optional(),
+});
+
+const repairLogSchema = z.object({
+  description: z.string().min(1, 'Description is required'),
+  date: z.coerce.date(),
+  cost: z.number().min(0).nullable().optional(),
+  note: z.string().nullable().optional(),
+  createdBy: z.string().nullable().optional(),
+});
+
+const partsReceivedSchema = z.object({
+  description: z.string().min(1, 'Description is required'),
+  quantity: z.number().min(0).nullable().optional(),
+  unit: z.string().nullable().optional(),
+  date: z.coerce.date(),
+  cost: z.number().min(0).nullable().optional(),
+  note: z.string().nullable().optional(),
+  createdBy: z.string().nullable().optional(),
+});
+
 module.exports = {
   pickupSchema,
   updateSchema,
   requestSchema,
+  maintenanceTaskSchema,
+  repairLogSchema,
+  partsReceivedSchema,
 };
 
