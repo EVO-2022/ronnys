@@ -13,6 +13,7 @@ This is a web-based chemical inventory tracking system built for Ronny's Car Was
 - **Request Fulfillment**: Fulfill open requests by picking up chemicals and logging them
 - **Activity Log**: Track all inventory changes with detailed history
 - **Google Sheets Sync**: Optional real-time synchronization with Google Sheets
+- **Maintenance Management**: Track maintenance tasks, repair logs, and parts received for end-of-year billing
 
 ## Tech Stack
 
@@ -33,14 +34,16 @@ ronnys/
 ├── src/
 │   ├── server.js              # Express server setup
 │   ├── routes/
-│   │   └── index.js           # All API routes
+│   │   └── index.js           # All API routes (inventory + maintenance)
 │   ├── lib/
 │   │   ├── prisma.js          # Prisma client singleton
 │   │   ├── inventory.js       # Business rules (increments, validation)
-│   │   ├── validation.js      # Zod schemas
-│   │   └── sheets.js          # Google Sheets integration
+│   │   ├── validation.js     # Zod schemas
+│   │   ├── sheets.js          # Google Sheets integration
+│   │   └── cleanup.js         # Cleanup utilities (if exists)
 │   ├── views/
-│   │   └── index.ejs          # Main dashboard template
+│   │   ├── index.ejs          # Main inventory dashboard template
+│   │   └── maintenance.ejs    # Maintenance management template
 │   └── public/
 │       ├── styles.css         # All CSS
 │       └── app.js             # Client-side JavaScript
@@ -100,6 +103,7 @@ model ActivityLog {
   note       String?
   createdBy  String?
   createdAt  DateTime @default(now())
+  batchId    String?  // Groups related logs from same transaction
   chemical   Chemical @relation(...)
 }
 ```
@@ -131,6 +135,73 @@ model RequestItem {
   pickedUpQty  Float?  @default(0)
   batch       RequestBatch @relation(...)
   chemical    Chemical     @relation(...)
+}
+```
+
+#### UsageHistory
+Historical tracking of chemical usage and pickups (stored in gallons for consistency).
+
+```prisma
+model UsageHistory {
+  id              String   @id @default(cuid())
+  chemicalId      String
+  chemicalName    String   // Denormalized for historical tracking
+  eventType       String   // "PICKUP" or "USAGE"
+  quantityGallons Float    // Always stored in gallons
+  quantityUnits   Float    // Original units (barrels, buckets, boxes)
+  unit            String   // "BARREL", "BUCKET", "BOX"
+  location        String?  // "SHELF" or "LINE"
+  costPerUnit     Float?   // Cost per unit at time of pickup
+  totalCost       Float?   // Total cost of transaction
+  note            String?
+  recordedAt      DateTime @default(now())
+}
+```
+
+#### MaintenanceTask
+Tracks maintenance tasks that need to be completed.
+
+```prisma
+model MaintenanceTask {
+  id          String    @id @default(cuid())
+  description String
+  status      String    @default("OPEN") // "OPEN" or "COMPLETED"
+  urgent      Boolean   @default(false)
+  note        String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+}
+```
+
+#### RepairLog
+Logs completed repairs and maintenance work.
+
+```prisma
+model RepairLog {
+  id          String    @id @default(cuid())
+  description String
+  date        DateTime
+  cost        Float?
+  note        String?
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+}
+```
+
+#### PartsReceived
+Tracks parts and equipment received for end-of-year billing.
+
+```prisma
+model PartsReceived {
+  id          String    @id @default(cuid())
+  description String
+  quantity    Float?
+  unit        String?
+  date        DateTime
+  cost        Float?
+  note        String?
+  createdBy   String?
+  createdAt   DateTime  @default(now())
 }
 ```
 
@@ -273,7 +344,77 @@ Returns JSON detail view for a single ActivityLog entry.
 ### GET `/requests/:batchId`
 Returns JSON for a specific RequestBatch with all items.
 
+## Maintenance Routes
+
+### GET `/maintenance`
+Renders the maintenance dashboard with three tabs:
+- **Tasks**: List of maintenance tasks (open and completed)
+- **Repairs**: Log of completed repairs
+- **Parts**: List of parts/equipment received
+
+### POST `/maintenance/tasks`
+Creates a new maintenance task.
+
+**Payload:**
+```json
+{
+  "description": "Fix pressure washer",
+  "urgent": true,
+  "note": "Optional note"
+}
+```
+
+### PATCH `/maintenance/tasks/:id/complete`
+Marks a task as completed (sets status to "COMPLETED" and completedAt timestamp).
+
+### DELETE `/maintenance/tasks/:id`
+Deletes a maintenance task.
+
+### POST `/maintenance/repairs`
+Creates a repair log entry.
+
+**Payload:**
+```json
+{
+  "description": "Replaced pump motor",
+  "date": "2024-01-15",
+  "cost": 450.00,
+  "note": "Optional note",
+  "createdBy": "Optional name"
+}
+```
+
+### DELETE `/maintenance/repairs/:id`
+Deletes a repair log entry.
+
+### POST `/maintenance/parts`
+Creates a parts received entry.
+
+**Payload:**
+```json
+{
+  "description": "Replacement nozzles",
+  "quantity": 12,
+  "unit": "pieces",
+  "date": "2024-01-15",
+  "cost": 125.50,
+  "note": "Optional note",
+  "createdBy": "Optional name"
+}
+```
+
+### DELETE `/maintenance/parts/:id`
+Deletes a parts received entry.
+
 ## Frontend Architecture
+
+### Navigation
+
+The application uses tab-based navigation in the header:
+- **Inventory Tab**: Main chemical inventory dashboard (default)
+- **Maintenance Tab**: Maintenance management section
+
+Both views share the same header with navigation tabs that switch between `/` (inventory) and `/maintenance`.
 
 ### Main Dashboard (`src/views/index.ejs`)
 
@@ -312,6 +453,31 @@ All modals use a consistent structure:
 **Inventory Breakdown Modal**: Table showing all chemicals with shelf/line/combined quantities
 
 **Log Detail Modal**: Shows full details of an activity log entry, including request batch details if applicable
+
+### Maintenance Dashboard (`src/views/maintenance.ejs`)
+
+Server-rendered EJS template with three internal tabs:
+
+1. **Tasks Tab**: 
+   - List of maintenance tasks with status (OPEN/COMPLETED)
+   - Urgent tasks highlighted with red border and "URGENT" badge
+   - Completed tasks shown with reduced opacity
+   - Actions: Complete (for open tasks), Delete
+   - Add Task modal with description, urgent checkbox, and optional note
+
+2. **Repairs Tab**:
+   - List of completed repairs sorted by date (newest first)
+   - Shows description, date, cost (if provided), and note
+   - Actions: Delete
+   - Add Repair modal with description, date, optional cost, and note
+
+3. **Parts Tab**:
+   - List of parts/equipment received sorted by date (newest first)
+   - Shows description, date, quantity/unit, cost (if provided), and note
+   - Actions: Delete
+   - Add Parts modal with description, quantity, unit, date, optional cost, and note
+
+All maintenance entries can be deleted once they're no longer needed. Tasks can be marked as completed, which sets their status and completion date but keeps them visible (with reduced opacity) until deleted.
 
 ### Client-Side JavaScript (`src/public/app.js`)
 
@@ -449,6 +615,31 @@ Key areas to test:
 5. **String enums instead of Prisma enums**: SQLite limitation workaround
 6. **Google Sheets as optional sync**: Database is source of truth, Sheets is convenience
 
+## Maintenance Feature Details
+
+### Purpose
+The maintenance feature allows tracking of:
+1. **Maintenance Tasks**: To-do list of maintenance work that needs to be done
+2. **Repair Logs**: Historical record of completed repairs and maintenance work
+3. **Parts Received**: Inventory of parts and equipment received for end-of-year billing purposes
+
+### Task Management
+- Tasks can be marked as "urgent" when creating them
+- Urgent tasks are visually highlighted with a red border and "URGENT" badge
+- Tasks can be marked as completed, which sets the status and completion date
+- Completed tasks remain visible (with reduced opacity) until deleted
+- Tasks are primarily for personal use - no user authentication required
+
+### Repair Logging
+- Logs completed repairs with description, date, and optional cost
+- Useful for tracking maintenance history and costs
+- Can include notes for additional context
+
+### Parts Tracking
+- Tracks parts and equipment received with description, quantity, unit, date
+- Optional cost tracking for billing purposes
+- Designed for end-of-year billing reconciliation
+
 ## Future Enhancement Ideas
 
 - User authentication and createdBy tracking
@@ -459,25 +650,90 @@ Key areas to test:
 - Multi-location support (beyond shelf/line)
 - Barcode scanning for quick updates
 - Mobile app wrapper (PWA)
+- Maintenance task assignments and notifications
+- Parts inventory tracking (current vs. received)
+- Cost analysis and reporting for repairs/parts
 
 ## Deployment Notes
 
 For Ubuntu server deployment:
 1. Ensure Node.js 18+ is installed
-2. Set up PM2 or similar process manager
+2. Set up PM2 or similar process manager (or use systemd service file `ronnys.service` if provided)
 3. Configure environment variables
-4. Run migrations on first deploy
-5. Set up Google Sheets service account (if using sync)
-6. Configure reverse proxy (nginx) for production
-7. Set up SSL certificate for HTTPS
+4. Run migrations on first deploy: `npx prisma migrate deploy`
+5. Seed the database: `npm run prisma:seed`
+6. Set up Google Sheets service account (if using sync)
+7. Configure reverse proxy (nginx) for production
+8. Set up SSL certificate for HTTPS
+9. Set up automatic backups (database and Google Sheets if enabled)
+
+### Server Setup
+The application is designed to be hosted on an Ubuntu server that pulls from GitHub. Typical workflow:
+1. Code changes are pushed to GitHub
+2. Server pulls latest changes: `git pull origin main`
+3. Install dependencies if needed: `npm install`
+4. Run migrations if schema changed: `npx prisma migrate deploy`
+5. Restart the application service
+
+### Database Migrations
+- Development: `npx prisma migrate dev --name <description>`
+- Production: `npx prisma migrate deploy` (applies pending migrations without creating new ones)
 
 ## Contact & Handoff
 
 This project was built as an MVP for Ronny's Car Wash. All code follows mobile-first, high-contrast design principles for outdoor use in bright sunlight.
+
+### Key Files for Understanding the System
+
+- **`JOURNAL.md`** (this file): Comprehensive documentation of the entire system
+- **`prisma/schema.prisma`**: Complete database schema with all models
+- **`src/lib/inventory.js`**: Core business rules for chemical increments and validation
+- **`src/routes/index.js`**: All API endpoints and route handlers
+- **`src/views/index.ejs`**: Main inventory dashboard template
+- **`src/views/maintenance.ejs`**: Maintenance management template
+- **`src/public/app.js`**: Client-side JavaScript for all interactions
+- **`src/lib/validation.js`**: Zod validation schemas for all endpoints
+- **`src/lib/sheets.js`**: Google Sheets integration (if enabled)
+
+### Recreating from Scratch
+
+If you need to recreate this project from scratch:
+
+1. **Database Setup**:
+   - Use Prisma with SQLite (or switch to PostgreSQL for production)
+   - Run all migrations in order from `prisma/migrations/`
+   - Seed with `prisma/seed.js` data
+
+2. **Core Dependencies**:
+   - `express`: Web server
+   - `prisma`: ORM and database client
+   - `zod`: Request validation
+   - `ejs`: Template engine
+   - `googleapis`: Google Sheets integration (optional)
+   - `dotenv`: Environment variables
+
+3. **Key Business Logic**:
+   - Chemical increment rules in `src/lib/inventory.js`
+   - Custom chemical ordering in routes
+   - Whole number enforcement for pickup/request
+   - Partial quantity support for updates
+
+4. **UI Patterns**:
+   - Modal-based interactions
+   - Tab navigation for maintenance
+   - Mobile-first responsive design
+   - High-contrast dark theme
+
+5. **Data Flow**:
+   - All operations update database first
+   - Google Sheets sync happens asynchronously (if enabled)
+   - Activity logs track all inventory changes
+   - Maintenance data is independent from inventory
 
 For questions about implementation decisions or to continue development, refer to:
 - This JOURNAL.md file
 - Inline code comments
 - Prisma schema for data structure
 - `src/lib/inventory.js` for business rules
+- Git commit history for change tracking
 
