@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ronny's Car Wash - Maintenance</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-content">
+        <h1>Ronny's Car Wash</h1>
+      </div>
+      <h2>Maintenance</h2>
+      <nav class="main-nav">
+        <a href="/" class="nav-tab">Inventory</a>
+        <a href="/maintenance" class="nav-tab active">Maintenance</a>
+      </nav>
+    </header>
+    <main>
+      <!-- Maintenance Tab Navigation -->
+      <div class="maintenance-tabs">
+        <button class="maintenance-tab active" data-tab="tasks">Tasks</button>
+        <button class="maintenance-tab" data-tab="repairs">Repairs</button>
+        <button class="maintenance-tab" data-tab="parts">Parts</button>
+      </div>
+
+      <!-- Tasks Tab -->
+      <div id="tasks-tab" class="maintenance-content active">
+        <div class="maintenance-header">
+          <h3>Maintenance Tasks</h3>
+          <button class="btn btn-primary" onclick="openAddTaskModal()">Add Task</button>
+        </div>
+        <div class="maintenance-list">
+          <% if (tasks && tasks.length > 0) { %>
+            <% tasks.forEach(task => { %>
+              <div class="maintenance-item <%= task.status === 'COMPLETED' ? 'completed' : '' %> <%= task.urgent ? 'urgent' : '' %>">
+                <div class="maintenance-item-content">
+                  <% if (task.urgent) { %>
+                    <span class="urgent-badge">URGENT</span>
+                  <% } %>
+                  <div class="maintenance-item-description"><%= task.description %></div>
+                  <% if (task.note) { %>
+                    <div class="maintenance-item-note"><%= task.note %></div>
+                  <% } %>
+                  <div class="maintenance-item-meta">
+                    Created: <%= new Date(task.createdAt).toLocaleDateString() %>
+                    <% if (task.completedAt) { %>
+                      | Completed: <%= new Date(task.completedAt).toLocaleDateString() %>
+                    <% } %>
+                  </div>
+                </div>
+                <div class="maintenance-item-actions">
+                  <% if (task.status === 'OPEN') { %>
+                    <button class="btn btn-small" onclick="completeTask('<%= task.id %>')">Complete</button>
+                  <% } %>
+                  <button class="btn btn-small btn-danger" onclick="deleteTask('<%= task.id %>')">Delete</button>
+                </div>
+              </div>
+            <% }); %>
+          <% } else { %>
+            <div class="empty-state">No tasks yet. Add one to get started!</div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Repairs Tab -->
+      <div id="repairs-tab" class="maintenance-content">
+        <div class="maintenance-header">
+          <h3>Repairs Log</h3>
+          <button class="btn btn-primary" onclick="openAddRepairModal()">Add Repair</button>
+        </div>
+        <div class="maintenance-list">
+          <% if (repairs && repairs.length > 0) { %>
+            <% repairs.forEach(repair => { %>
+              <div class="maintenance-item">
+                <div class="maintenance-item-content">
+                  <div class="maintenance-item-description"><%= repair.description %></div>
+                  <div class="maintenance-item-meta">
+                    Date: <%= new Date(repair.date).toLocaleDateString() %>
+                    <% if (repair.cost) { %>
+                      | Cost: $<%= repair.cost.toFixed(2) %>
+                    <% } %>
+                    <% if (repair.createdBy) { %>
+                      | By: <%= repair.createdBy %>
+                    <% } %>
+                  </div>
+                  <% if (repair.note) { %>
+                    <div class="maintenance-item-note"><%= repair.note %></div>
+                  <% } %>
+                </div>
+                <div class="maintenance-item-actions">
+                  <button class="btn btn-small btn-danger" onclick="deleteRepair('<%= repair.id %>')">Delete</button>
+                </div>
+              </div>
+            <% }); %>
+          <% } else { %>
+            <div class="empty-state">No repairs logged yet.</div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Parts Tab -->
+      <div id="parts-tab" class="maintenance-content">
+        <div class="maintenance-header">
+          <h3>Parts Received</h3>
+          <button class="btn btn-primary" onclick="openAddPartsModal()">Add Parts</button>
+        </div>
+        <div class="maintenance-list">
+          <% if (parts && parts.length > 0) { %>
+            <% parts.forEach(part => { %>
+              <div class="maintenance-item">
+                <div class="maintenance-item-content">
+                  <div class="maintenance-item-description"><%= part.description %></div>
+                  <div class="maintenance-item-meta">
+                    Date: <%= new Date(part.date).toLocaleDateString() %>
+                    <% if (part.quantity) { %>
+                      | Qty: <%= part.quantity %><%= part.unit ? ' ' + part.unit : '' %>
+                    <% } %>
+                    <% if (part.cost) { %>
+                      | Cost: $<%= part.cost.toFixed(2) %>
+                    <% } %>
+                    <% if (part.createdBy) { %>
+                      | By: <%= part.createdBy %>
+                    <% } %>
+                  </div>
+                  <% if (part.note) { %>
+                    <div class="maintenance-item-note"><%= part.note %></div>
+                  <% } %>
+                </div>
+                <div class="maintenance-item-actions">
+                  <button class="btn btn-small btn-danger" onclick="deleteParts('<%= part.id %>')">Delete</button>
+                </div>
+              </div>
+            <% }); %>
+          <% } else { %>
+            <div class="empty-state">No parts received yet.</div>
+          <% } %>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Add Task Modal -->
+  <div id="addTaskModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Add Maintenance Task</h2>
+        <button class="modal-close" onclick="closeModal('addTaskModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="taskForm" method="POST" action="/maintenance/tasks">
+          <div class="form-group">
+            <label for="taskDescription">Description *</label>
+            <input type="text" id="taskDescription" name="description" required>
+          </div>
+          <div class="form-group">
+            <label>
+              <input type="checkbox" name="urgent" value="true">
+              Mark as urgent
+            </label>
+          </div>
+          <div class="form-group">
+            <label for="taskNote">Note (optional)</label>
+            <textarea id="taskNote" name="note" rows="3"></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('addTaskModal')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Add Task</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Repair Modal -->
+  <div id="addRepairModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Log Repair</h2>
+        <button class="modal-close" onclick="closeModal('addRepairModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="repairForm" method="POST" action="/maintenance/repairs">
+          <div class="form-group">
+            <label for="repairDescription">Description *</label>
+            <input type="text" id="repairDescription" name="description" required>
+          </div>
+          <div class="form-group">
+            <label for="repairDate">Date *</label>
+            <input type="date" id="repairDate" name="date" required value="<%= new Date().toISOString().split('T')[0] %>">
+          </div>
+          <div class="form-group">
+            <label for="repairCost">Cost (optional)</label>
+            <input type="number" id="repairCost" name="cost" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label for="repairNote">Note (optional)</label>
+            <textarea id="repairNote" name="note" rows="3"></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('addRepairModal')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Log Repair</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Parts Modal -->
+  <div id="addPartsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Add Parts Received</h2>
+        <button class="modal-close" onclick="closeModal('addPartsModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="partsForm" method="POST" action="/maintenance/parts">
+          <div class="form-group">
+            <label for="partsDescription">Description *</label>
+            <input type="text" id="partsDescription" name="description" required>
+          </div>
+          <div class="form-group">
+            <label for="partsQuantity">Quantity (optional)</label>
+            <input type="number" id="partsQuantity" name="quantity" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label for="partsUnit">Unit (optional)</label>
+            <input type="text" id="partsUnit" name="unit">
+          </div>
+          <div class="form-group">
+            <label for="partsDate">Date *</label>
+            <input type="date" id="partsDate" name="date" required value="<%= new Date().toISOString().split('T')[0] %>">
+          </div>
+          <div class="form-group">
+            <label for="partsCost">Cost (optional)</label>
+            <input type="number" id="partsCost" name="cost" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label for="partsNote">Note (optional)</label>
+            <textarea id="partsNote" name="note" rows="3"></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('addPartsModal')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Add Parts</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+  <script>
+    // Maintenance tab switching
+    function switchMaintenanceTab(tab) {
+      // Hide all tabs
+      document.querySelectorAll('.maintenance-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.maintenance-tab').forEach(el => el.classList.remove('active'));
+      
+      // Show selected tab
+      document.getElementById(tab + '-tab').classList.add('active');
+      document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+    }
+
+    // Set up tab click handlers
+    document.querySelectorAll('.maintenance-tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        const tabName = this.getAttribute('data-tab');
+        switchMaintenanceTab(tabName);
+      });
+    });
+
+    // Modal functions
+    function openAddTaskModal() {
+      document.getElementById('addTaskModal').style.display = 'flex';
+    }
+
+    function openAddRepairModal() {
+      document.getElementById('addRepairModal').style.display = 'flex';
+    }
+
+    function openAddPartsModal() {
+      document.getElementById('addPartsModal').style.display = 'flex';
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).style.display = 'none';
+    }
+
+    // Task actions
+    async function completeTask(taskId) {
+      if (!confirm('Mark this task as completed?')) return;
+      try {
+        const res = await fetch(`/maintenance/tasks/${taskId}/complete`, {
+          method: 'PATCH',
+        });
+        if (res.ok) {
+          window.location.reload();
+        }
+      } catch (error) {
+        alert('Error completing task');
+      }
+    }
+
+    async function deleteTask(taskId) {
+      if (!confirm('Delete this task?')) return;
+      try {
+        const res = await fetch(`/maintenance/tasks/${taskId}`, {
+          method: 'DELETE',
+        });
+        if (res.ok) {
+          window.location.reload();
+        }
+      } catch (error) {
+        alert('Error deleting task');
+      }
+    }
+
+    async function deleteRepair(repairId) {
+      if (!confirm('Delete this repair log?')) return;
+      try {
+        const res = await fetch(`/maintenance/repairs/${repairId}`, {
+          method: 'DELETE',
+        });
+        if (res.ok) {
+          window.location.reload();
+        }
+      } catch (error) {
+        alert('Error deleting repair');
+      }
+    }
+
+    async function deleteParts(partsId) {
+      if (!confirm('Delete this parts entry?')) return;
+      try {
+        const res = await fetch(`/maintenance/parts/${partsId}`, {
+          method: 'DELETE',
+        });
+        if (res.ok) {
+          window.location.reload();
+        }
+      } catch (error) {
+        alert('Error deleting parts entry');
+      }
+    }
+
+    // Close modal on outside click
+    window.onclick = function(event) {
+      if (event.target.classList.contains('modal')) {
+        event.target.style.display = 'none';
+      }
+    };
+  </script>
+</body>
+</html>
+

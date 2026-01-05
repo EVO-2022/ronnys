@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../lib/prisma');
-const { pickupSchema, updateSchema, requestSchema } = require('../lib/validation');
+const { pickupSchema, updateSchema, requestSchema, maintenanceTaskSchema, repairLogSchema, partsReceivedSchema } = require('../lib/validation');
 const { validateQuantity, validateWholeQuantity, getAllowedLocations, getIncrementForLocation, convertUnitsToGallons, convertGallonsToUnits, getGallonIncrement, checkLowInventory } = require('../lib/inventory');
 const { syncInventoryState, appendActivityLogRow } = require('../lib/sheets');
 
@@ -1043,6 +1043,162 @@ router.get('/log/:id', async (req, res, next) => {
     }
 
     res.json(response);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ==================== MAINTENANCE ROUTES ====================
+
+// GET /maintenance - Maintenance dashboard
+router.get('/maintenance', async (req, res, next) => {
+  try {
+    const tasks = await prisma.maintenanceTask.findMany({
+      orderBy: [
+        { urgent: 'desc' },
+        { createdAt: 'desc' },
+      ],
+    });
+
+    const repairs = await prisma.repairLog.findMany({
+      orderBy: { date: 'desc' },
+      take: 50,
+    });
+
+    const parts = await prisma.partsReceived.findMany({
+      orderBy: { date: 'desc' },
+      take: 50,
+    });
+
+    res.render('maintenance', {
+      tasks,
+      repairs,
+      parts,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ==================== MAINTENANCE TASKS ====================
+
+// POST /maintenance/tasks - Create task
+router.post('/maintenance/tasks', async (req, res, next) => {
+  try {
+    const data = maintenanceTaskSchema.parse(req.body);
+    const task = await prisma.maintenanceTask.create({
+      data: {
+        description: data.description,
+        urgent: data.urgent || false,
+        note: data.note || null,
+      },
+    });
+    res.redirect('/maintenance');
+  } catch (error) {
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ error: error.errors });
+    }
+    next(error);
+  }
+});
+
+// PATCH /maintenance/tasks/:id/complete - Mark task as completed
+router.patch('/maintenance/tasks/:id/complete', async (req, res, next) => {
+  try {
+    const task = await prisma.maintenanceTask.update({
+      where: { id: req.params.id },
+      data: {
+        status: 'COMPLETED',
+        completedAt: new Date(),
+      },
+    });
+    res.json({ ok: true, task });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /maintenance/tasks/:id - Delete task
+router.delete('/maintenance/tasks/:id', async (req, res, next) => {
+  try {
+    await prisma.maintenanceTask.delete({
+      where: { id: req.params.id },
+    });
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ==================== REPAIR LOGS ====================
+
+// POST /maintenance/repairs - Create repair log
+router.post('/maintenance/repairs', async (req, res, next) => {
+  try {
+    const data = repairLogSchema.parse(req.body);
+    const repair = await prisma.repairLog.create({
+      data: {
+        description: data.description,
+        date: data.date,
+        cost: data.cost || null,
+        note: data.note || null,
+        createdBy: data.createdBy || null,
+      },
+    });
+    res.redirect('/maintenance');
+  } catch (error) {
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ error: error.errors });
+    }
+    next(error);
+  }
+});
+
+// DELETE /maintenance/repairs/:id - Delete repair log
+router.delete('/maintenance/repairs/:id', async (req, res, next) => {
+  try {
+    await prisma.repairLog.delete({
+      where: { id: req.params.id },
+    });
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ==================== PARTS RECEIVED ====================
+
+// POST /maintenance/parts - Create parts received entry
+router.post('/maintenance/parts', async (req, res, next) => {
+  try {
+    const data = partsReceivedSchema.parse(req.body);
+    const part = await prisma.partsReceived.create({
+      data: {
+        description: data.description,
+        quantity: data.quantity || null,
+        unit: data.unit || null,
+        date: data.date,
+        cost: data.cost || null,
+        note: data.note || null,
+        createdBy: data.createdBy || null,
+      },
+    });
+    res.redirect('/maintenance');
+  } catch (error) {
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ error: error.errors });
+    }
+    next(error);
+  }
+});
+
+// DELETE /maintenance/parts/:id - Delete parts received entry
+router.delete('/maintenance/parts/:id', async (req, res, next) => {
+  try {
+    await prisma.partsReceived.delete({
+      where: { id: req.params.id },
+    });
+    res.json({ ok: true });
   } catch (error) {
     next(error);
   }
