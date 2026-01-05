@@ -1,0 +1,15 @@
+[Unit]
+Description=Ronny's Car Wash Inventory App
+After=network.target
+
+[Service]
+Type=simple
+User=evo
+WorkingDirectory=/home/evo/ronnys
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node src/server.js
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -2,10 +2,24 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const routes = require('./routes');
-const { ensureSheetsInitialized, syncChemicals, syncInventoryState, isEnabled } = require('./lib/sheets');
+const { ensureSheetsInitialized, syncChemicals, syncInventoryState, syncUsageHistory, isEnabled } = require('./lib/sheets');
+const { cleanupOldActivityLogs, getCurrentTime, formatCST } = require('./lib/cleanup');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Clean up old activity logs on startup (older than 12 hours)
+(async () => {
+  try {
+    const now = getCurrentTime();
+    const nowCST = formatCST(now);
+    console.log(`[Startup] Current CST time: ${nowCST}`);
+    const deletedCount = await cleanupOldActivityLogs();
+    console.log(`✅ Activity log cleanup complete (deleted ${deletedCount} entries)`);
+  } catch (e) {
+    console.error('❌ Activity log cleanup failed', e.message);
+  }
+})();
 
 // Force Google Sheets initialization and backfill at startup
 if (process.env.GOOGLE_SHEETS_ENABLED === 'true') {
@@ -14,6 +28,7 @@ if (process.env.GOOGLE_SHEETS_ENABLED === 'true') {
       await ensureSheetsInitialized();
       await syncChemicals();
       await syncInventoryState();
+      await syncUsageHistory();
       console.log('✅ Google Sheets fully initialized + backfilled');
     } catch (e) {
       console.error('❌ Google Sheets init failed', e.message);

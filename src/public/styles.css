@@ -152,6 +152,90 @@ header h2 {
   font-style: italic;
 }
 
+/* Low Inventory Banner */
+.low-inventory-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 15px 20px;
+  margin-bottom: 20px;
+  background-color: rgba(204, 51, 51, 0.15);
+  border: 2px solid #cc3333;
+  border-radius: 8px;
+  animation: glow 2s ease-in-out infinite;
+  color: #cc3333;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.low-inventory-banner svg {
+  flex-shrink: 0;
+}
+
+.low-inventory-text {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.low-inventory-count {
+  padding: 4px 12px;
+  background-color: #cc3333;
+  color: #ffffff;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+/* Low Inventory Section in Modal */
+.low-inventory-section {
+  background-color: rgba(204, 51, 51, 0.1);
+  border: 2px solid #cc3333;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 25px;
+}
+
+.low-inventory-heading {
+  color: #cc3333;
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.low-inventory-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.low-inventory-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px 15px;
+  margin-bottom: 10px;
+  background-color: #1a1a1a;
+  border-left: 4px solid #cc3333;
+  border-radius: 4px;
+}
+
+.low-inventory-item:last-child {
+  margin-bottom: 0;
+}
+
+.low-item-name {
+  font-weight: bold;
+  font-size: 16px;
+  color: #ffffff;
+}
+
+.low-item-details {
+  font-size: 14px;
+  color: #aaaaaa;
+}
+
 /* Action Buttons */
 .action-buttons {
   display: flex;
@@ -307,13 +391,14 @@ header h2 {
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 200px);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
 }
 
 .modal-body form {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   flex: 1;
   min-height: 0;
 }
@@ -353,6 +438,42 @@ header h2 {
   margin-top: 5px;
   font-size: 14px;
   color: #aaaaaa;
+}
+
+/* Request Note Display */
+.request-note-display {
+  display: flex;
+  gap: 12px;
+  padding: 15px 18px;
+  margin-bottom: 25px;
+  background-color: rgba(204, 51, 51, 0.12);
+  border-left: 4px solid #cc3333;
+  border-radius: 6px;
+}
+
+.request-note-icon {
+  flex-shrink: 0;
+  color: #cc3333;
+  margin-top: 2px;
+}
+
+.request-note-content {
+  flex: 1;
+}
+
+.request-note-label {
+  font-size: 13px;
+  font-weight: bold;
+  color: #cc3333;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.request-note-text {
+  font-size: 15px;
+  color: #ffffff;
+  line-height: 1.5;
 }
 
 .form-actions {
@@ -515,6 +636,7 @@ header h2 {
   width: 100%;
   border-collapse: collapse;
   font-size: 16px;
+  table-layout: fixed;
 }
 
 .inventory-table th,

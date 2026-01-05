@@ -44,11 +44,13 @@ model ActivityLog {
   note       String?
   createdBy  String?
   createdAt  DateTime @default(now())
+  batchId    String?  // Groups related logs from same transaction
 
   chemical   Chemical   @relation(fields: [chemicalId], references: [id], onDelete: Cascade)
 
   @@index([type, createdAt])
   @@index([chemicalId, createdAt])
+  @@index([batchId, createdAt])
 }
 
 model RequestBatch {
@@ -75,5 +77,24 @@ model RequestItem {
 
   @@index([batchId])
   @@index([chemicalId])
+}
+
+model UsageHistory {
+  id              String   @id @default(cuid())
+  chemicalId      String
+  chemicalName    String   // Denormalized for historical tracking
+  eventType       String   // PICKUP or USAGE
+  quantityGallons Float    // Always stored in gallons for consistency
+  quantityUnits   Float    // Original units (barrels, buckets, boxes)
+  unit            String   // BARREL, BUCKET, BOX
+  location        String?  // SHELF or LINE
+  costPerUnit     Float?   // Cost per unit at time of pickup (for future cost tracking)
+  totalCost       Float?   // Total cost of this transaction
+  note            String?
+  recordedAt      DateTime @default(now())
+
+  @@index([chemicalId, recordedAt])
+  @@index([eventType, recordedAt])
+  @@index([recordedAt])
 }
 

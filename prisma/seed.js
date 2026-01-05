@@ -31,11 +31,11 @@ async function main() {
     update: {},
     create: {
       name: 'Clean and Fresh Blast',
-      unit: 'BARREL',
-      increment: 0.25,
+      unit: 'BOX',
+      increment: 1.0,
       trackOnShelf: true,
       trackOnLine: true,
-      gallonsPerUnit: 15,
+      gallonsPerUnit: 5,
       inventory: {
         create: {
           shelfQty: 0,

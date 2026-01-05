@@ -27,13 +27,23 @@
     <main>
 <!-- Current Inventory Tally Box -->
 <div class="tally-box" onclick="openInventoryModal()">
+  <% if (typeof hasLowInventory !== 'undefined' && hasLowInventory) { %>
+    <div class="low-inventory-banner">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <span class="low-inventory-text">Low Inventory Alert</span>
+      <span class="low-inventory-count"><%= lowInventoryItems.length %> item<%= lowInventoryItems.length !== 1 ? 's' : '' %></span>
+    </div>
+  <% } %>
   <div class="tally-main">
     <div class="tally-label">Current Inventory</div>
     <div class="inventory-updated">Last updated: <%= typeof lastUpdatedFormatted !== 'undefined' ? lastUpdatedFormatted : '—' %></div>
-    <div class="tally-value"><%= totals.totalUnits %> Units</div>
+    <div class="tally-value"><%= totals.totalGallons %> Gallons</div>
   </div>
   <div class="tally-details">
-    <span><%= totals.totalGallons %> Gallons</span>
     <span><%= totals.totalBoxes %> Boxes</span>
     <span><%= totals.totalBarrels %> Barrels</span>
     <span><%= totals.totalBuckets %> Buckets</span>
@@ -75,6 +85,22 @@
       <span class="close" onclick="closeModal('inventoryModal')">&times;</span>
     </div>
     <div class="modal-body">
+      <% if (typeof hasLowInventory !== 'undefined' && hasLowInventory) { %>
+        <div class="low-inventory-section">
+          <h3 class="low-inventory-heading">⚠️ Low Inventory Items</h3>
+          <ul class="low-inventory-list">
+            <% lowInventoryItems.forEach(item => { %>
+              <li class="low-inventory-item">
+                <span class="low-item-name"><%= item.chemicalName %></span>
+                <span class="low-item-details">
+                  <%= item.currentDisplay %> on the <%= item.location === 'SHELF' ? 'Shelf' : 'Line' %>
+                  (threshold: <%= item.threshold %> <%= item.unit.toLowerCase() + (item.threshold !== 1 ? (item.unit === 'BOX' ? 'es' : 's') : '') %>)
+                </span>
+              </li>
+            <% }); %>
+          </ul>
+        </div>
+      <% } %>
       <table class="inventory-table">
         <thead>
           <tr>
@@ -86,13 +112,11 @@
         </thead>
         <tbody>
           <% chemicals.forEach((chemical, index) => { %>
-            <% const inv = chemical.inventory || { shelfQty: 0, lineQty: 0 }; %>
-            <% const combined = inv.shelfQty + inv.lineQty; %>
             <tr>
               <td><%= chemical.name %></td>
-              <td><%= inv.shelfQty.toFixed(2) %></td>
-              <td><%= chemical.trackOnLine ? inv.lineQty.toFixed(2) : 'N/A' %></td>
-              <td><strong><%= combined.toFixed(2) %></strong></td>
+              <td><%= chemical.shelfQtyDisplay %></td>
+              <td><%= chemical.lineQtyDisplay %></td>
+              <td><strong><%= chemical.combinedQtyDisplay %></strong></td>
             </tr>
             <% 
               // Add separator after: Prizm Gold, RLC, Air Freshener - Cool Water

@@ -107,6 +107,11 @@ async function ensureSheetsInitialized() {
       'id', 'type', 'chemicalId', 'chemicalName', 'location',
       'setQty', 'addQty', 'requestQty', 'note', 'createdBy', 'createdAt'
     ],
+    usage_history: [
+      'id', 'chemicalId', 'chemicalName', 'eventType', 'quantityGallons',
+      'quantityUnits', 'unit', 'location', 'costPerUnit', 'totalCost',
+      'note', 'recordedAt'
+    ],
   };
 
   for (const [sheetName, headerRow] of Object.entries(headers)) {
@@ -288,12 +293,119 @@ async function appendActivityLogRow(logId) {
   }
 }
 
+/**
+ * Sync all usage history to the usage_history tab
+ */
+async function syncUsageHistory() {
+  if (!isEnabled()) {
+    return;
+  }
+
+  const sheets = await getSheetsClient();
+  const sheetId = process.env.GOOGLE_SHEET_ID;
+
+  try {
+    const usageRecords = await prisma.usageHistory.findMany({
+      orderBy: { recordedAt: 'desc' },
+      take: 5000, // Limit to last 5000 records to avoid huge sheets
+    });
+
+    const rows = usageRecords.map(record => [
+      empty(record.id),
+      empty(record.chemicalId),
+      empty(record.chemicalName),
+      empty(record.eventType),
+      empty(record.quantityGallons),
+      empty(record.quantityUnits),
+      empty(record.unit),
+      empty(record.location),
+      empty(record.costPerUnit),
+      empty(record.totalCost),
+      empty(record.note),
+      record.recordedAt ? record.recordedAt.toISOString() : '',
+    ]);
+
+    // Clear existing data (except header)
+    if (rows.length > 0 || true) {
+      const clearRange = `usage_history!A2:L6000`;
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId: sheetId,
+        range: clearRange,
+      });
+    }
+
+    // Write new data
+    if (rows.length > 0) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: 'usage_history!A2',
+        valueInputOption: 'RAW',
+        resource: { values: rows },
+      });
+    }
+
+    console.log(`[Sheets] Synced ${rows.length} usage history records`);
+  } catch (error) {
+    console.error('[Sheets] Error syncing usage history:', error.message);
+  }
+}
+
+/**
+ * Append a single usage history row
+ */
+async function appendUsageHistoryRow(usageId) {
+  if (!isEnabled()) {
+    return;
+  }
+
+  try {
+    const sheets = await getSheetsClient();
+    const sheetId = process.env.GOOGLE_SHEET_ID;
+    const record = await prisma.usageHistory.findUnique({
+      where: { id: usageId },
+    });
+
+    if (!record) {
+      console.warn(`[Sheets] Usage history ${usageId} not found`);
+      return;
+    }
+
+    const row = [
+      empty(record.id),
+      empty(record.chemicalId),
+      empty(record.chemicalName),
+      empty(record.eventType),
+      empty(record.quantityGallons),
+      empty(record.quantityUnits),
+      empty(record.unit),
+      empty(record.location),
+      empty(record.costPerUnit),
+      empty(record.totalCost),
+      empty(record.note),
+      record.recordedAt ? record.recordedAt.toISOString() : '',
+    ];
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: sheetId,
+      range: 'usage_history!A:A',
+      valueInputOption: 'RAW',
+      resource: { values: [row] },
+    });
+
+    console.log(`[Sheets] Appended usage history ${usageId}`);
+  } catch (error) {
+    console.error('[Sheets] Error appending usage history:', error.message);
+  }
+}
+
 module.exports = {
   isEnabled,
   ensureSheetsInitialized,
   syncChemicals,
   syncInventoryState,
   appendActivityLogRow,
+  syncUsageHistory,
+  appendUsageHistoryRow,
   getSheetsClient,
   empty,
 };

@@ -121,43 +121,35 @@ function switchUpdateTab(location) {
     });
     
     allowedChemicals.forEach((chemical, index) => {
-      const increment = location === 'SHELF' 
-        ? (chemical.shelfIncrement || chemical.increment)
-        : (chemical.lineIncrement || chemical.increment);
-      
-      // Special case: BUCKET chemicals use 0.25 for line
-      const actualIncrement = (chemical.unit === 'BUCKET' && location === 'LINE') 
-        ? 0.25 
-        : increment;
-
-      const qtyOptions = generateQuantityOptions(actualIncrement);
-      const optionsHtml = qtyOptions.map(qty => 
-        `<option value="${qty}">${qty}</option>`
-      ).join('');
+      // Determine if this chemical tracks in gallons or boxes
+      const usesGallons = chemical.gallonsPerUnit != null;
+      const step = usesGallons ? '0.1' : (chemical.increment || 1).toString();
+      const placeholder = usesGallons ? 'Gallons' : 'Boxes';
 
       const itemDiv = document.createElement('div');
       itemDiv.className = 'chemical-item';
       itemDiv.setAttribute('data-chemical-id', chemical.id);
-      
+
       itemDiv.innerHTML = `
         <div class="chemical-name">${chemical.name}</div>
         <div class="chemical-inputs">
           <div class="form-group">
             <label>Quantity</label>
-            <select 
-              class="update-qty" 
+            <input
+              type="number"
+              class="update-qty"
               name="updates[${chemical.id}][qty]"
               data-chemical-id="${chemical.id}"
-            >
-              <option value="">--</option>
-              ${optionsHtml}
-            </select>
+              placeholder="${placeholder}"
+              step="${step}"
+              min="0"
+            />
           </div>
         </div>
       `;
-      
+
       updateChemicalList.appendChild(itemDiv);
-      
+
       // Add separator after: Prizm Gold, RLC, Air Freshener - Cool Water
       const separatorAfter = ['Prizm Gold', 'RLC', 'Air Freshener - Cool Water'];
       if (separatorAfter.includes(chemical.name) && index < allowedChemicals.length - 1) {
@@ -190,10 +182,32 @@ function openFulfillModal() {
       const requestedChemicalIds = new Set(requestData.items.map(item => item.chemicalId));
       const requestedItems = requestData.items || [];
       const otherChemicals = (allChemicals || []).filter(chem => !requestedChemicalIds.has(chem.id));
-      
-      let html = `<form id="fulfillForm">
-        <div class="chemical-list">`;
-      
+
+      let html = `<form id="fulfillForm">`;
+
+      // Show request note at the top if it exists
+      if (requestData.note && requestData.note.trim() !== '') {
+        html += `
+          <div class="request-note-display">
+            <div class="request-note-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            <div class="request-note-content">
+              <div class="request-note-label">Request Note:</div>
+              <div class="request-note-text">${requestData.note}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      html += `<div class="chemical-list">`;
+
       // Render requested items
       if (requestedItems.length > 0) {
         html += '<h4 style="color: #cc3333; margin-bottom: 15px;">Requested Items</h4>';
