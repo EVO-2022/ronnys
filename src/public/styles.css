@@ -1037,6 +1037,47 @@ header h2 {
   border-radius: 8px;
 }
 
+/* Clickable Items */
+.maintenance-item.clickable {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.maintenance-item.clickable:hover {
+  border-color: #cc3333;
+  background-color: #222222;
+  transform: translateY(-2px);
+}
+
+.maintenance-item.clickable:active {
+  transform: translateY(0);
+}
+
+/* Detail View */
+.detail-group {
+  margin-bottom: 20px;
+}
+
+.detail-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #aaaaaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.detail-value {
+  font-size: 16px;
+  color: #ffffff;
+  padding: 10px 12px;
+  background-color: #2a2a2a;
+  border-radius: 6px;
+  border: 1px solid #444;
+  min-height: 42px;
+}
+
 /* Responsive Maintenance */
 @media (max-width: 768px) {
   .maintenance-tabs {

@@ -33,17 +33,17 @@ const maintenanceTaskSchema = z.object({
 const repairLogSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   date: z.coerce.date(),
-  cost: z.number().min(0).nullable().optional(),
+  cost: z.coerce.number().min(0).nullable().optional(),
   note: z.string().nullable().optional(),
   createdBy: z.string().nullable().optional(),
 });
 
 const partsReceivedSchema = z.object({
   description: z.string().min(1, 'Description is required'),
-  quantity: z.number().min(0).nullable().optional(),
+  quantity: z.coerce.number().min(0).nullable().optional(),
   unit: z.string().nullable().optional(),
   date: z.coerce.date(),
-  cost: z.number().min(0).nullable().optional(),
+  cost: z.coerce.number().min(0).nullable().optional(),
   note: z.string().nullable().optional(),
   createdBy: z.string().nullable().optional(),
 });

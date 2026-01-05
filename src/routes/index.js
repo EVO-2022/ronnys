@@ -1154,14 +1154,25 @@ router.post('/maintenance/repairs', async (req, res, next) => {
   }
 });
 
-// DELETE /maintenance/repairs/:id - Delete repair log
-router.delete('/maintenance/repairs/:id', async (req, res, next) => {
+// PATCH /maintenance/repairs/:id - Edit repair log
+router.patch('/maintenance/repairs/:id', async (req, res, next) => {
   try {
-    await prisma.repairLog.delete({
+    const data = repairLogSchema.parse(req.body);
+    const repair = await prisma.repairLog.update({
       where: { id: req.params.id },
+      data: {
+        description: data.description,
+        date: data.date,
+        cost: data.cost || null,
+        note: data.note || null,
+        createdBy: data.createdBy || null,
+      },
     });
-    res.json({ ok: true });
+    res.json({ ok: true, repair });
   } catch (error) {
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ error: error.errors });
+    }
     next(error);
   }
 });
@@ -1192,14 +1203,27 @@ router.post('/maintenance/parts', async (req, res, next) => {
   }
 });
 
-// DELETE /maintenance/parts/:id - Delete parts received entry
-router.delete('/maintenance/parts/:id', async (req, res, next) => {
+// PATCH /maintenance/parts/:id - Edit parts received entry
+router.patch('/maintenance/parts/:id', async (req, res, next) => {
   try {
-    await prisma.partsReceived.delete({
+    const data = partsReceivedSchema.parse(req.body);
+    const part = await prisma.partsReceived.update({
       where: { id: req.params.id },
+      data: {
+        description: data.description,
+        quantity: data.quantity || null,
+        unit: data.unit || null,
+        date: data.date,
+        cost: data.cost || null,
+        note: data.note || null,
+        createdBy: data.createdBy || null,
+      },
     });
-    res.json({ ok: true });
+    res.json({ ok: true, part });
   } catch (error) {
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ error: error.errors });
+    }
     next(error);
   }
 });

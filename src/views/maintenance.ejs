@@ -74,7 +74,7 @@
         <div class="maintenance-list">
           <% if (repairs && repairs.length > 0) { %>
             <% repairs.forEach(repair => { %>
-              <div class="maintenance-item">
+              <div class="maintenance-item clickable" onclick="viewRepair('<%= repair.id %>', '<%= repair.description.replace(/'/g, "\\'") %>', '<%= new Date(repair.date).toISOString().split('T')[0] %>', <%= repair.cost || 'null' %>, '<%= repair.note ? repair.note.replace(/'/g, "\\'") : "" %>', '<%= repair.createdBy || "" %>')">
                 <div class="maintenance-item-content">
                   <div class="maintenance-item-description"><%= repair.description %></div>
                   <div class="maintenance-item-meta">
@@ -89,9 +89,6 @@
                   <% if (repair.note) { %>
                     <div class="maintenance-item-note"><%= repair.note %></div>
                   <% } %>
-                </div>
-                <div class="maintenance-item-actions">
-                  <button class="btn btn-small btn-danger" onclick="deleteRepair('<%= repair.id %>')">Delete</button>
                 </div>
               </div>
             <% }); %>
@@ -110,7 +107,7 @@
         <div class="maintenance-list">
           <% if (parts && parts.length > 0) { %>
             <% parts.forEach(part => { %>
-              <div class="maintenance-item">
+              <div class="maintenance-item clickable" onclick="viewParts('<%= part.id %>', '<%= part.description.replace(/'/g, "\\'") %>', <%= part.quantity || 'null' %>, '<%= part.unit || "" %>', '<%= new Date(part.date).toISOString().split('T')[0] %>', <%= part.cost || 'null' %>, '<%= part.note ? part.note.replace(/'/g, "\\'") : "" %>', '<%= part.createdBy || "" %>')">
                 <div class="maintenance-item-content">
                   <div class="maintenance-item-description"><%= part.description %></div>
                   <div class="maintenance-item-meta">
@@ -128,9 +125,6 @@
                   <% if (part.note) { %>
                     <div class="maintenance-item-note"><%= part.note %></div>
                   <% } %>
-                </div>
-                <div class="maintenance-item-actions">
-                  <button class="btn btn-small btn-danger" onclick="deleteParts('<%= part.id %>')">Delete</button>
                 </div>
               </div>
             <% }); %>
@@ -250,6 +244,152 @@
     </div>
   </div>
 
+  <!-- View/Edit Repair Modal -->
+  <div id="viewRepairModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="repairModalTitle">Repair Details</h2>
+        <button class="modal-close" onclick="closeModal('viewRepairModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- View Mode -->
+        <div id="repairViewMode">
+          <div class="detail-group">
+            <label>Description</label>
+            <div id="repairViewDescription" class="detail-value"></div>
+          </div>
+          <div class="detail-group">
+            <label>Date</label>
+            <div id="repairViewDate" class="detail-value"></div>
+          </div>
+          <div class="detail-group">
+            <label>Cost</label>
+            <div id="repairViewCost" class="detail-value"></div>
+          </div>
+          <div class="detail-group">
+            <label>Note</label>
+            <div id="repairViewNote" class="detail-value"></div>
+          </div>
+          <div class="detail-group">
+            <label>Created By</label>
+            <div id="repairViewCreatedBy" class="detail-value"></div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('viewRepairModal')">Close</button>
+            <button type="button" class="btn btn-primary" onclick="enableRepairEdit()">Edit</button>
+          </div>
+        </div>
+        <!-- Edit Mode -->
+        <form id="repairEditMode" style="display: none;" onsubmit="submitEditRepair(event)">
+          <input type="hidden" id="editRepairId" name="id">
+          <div class="form-group">
+            <label for="editRepairDescription">Description *</label>
+            <input type="text" id="editRepairDescription" name="description" required>
+          </div>
+          <div class="form-group">
+            <label for="editRepairDate">Date *</label>
+            <input type="date" id="editRepairDate" name="date" required>
+          </div>
+          <div class="form-group">
+            <label for="editRepairCost">Cost (optional)</label>
+            <input type="number" id="editRepairCost" name="cost" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label for="editRepairNote">Note (optional)</label>
+            <textarea id="editRepairNote" name="note" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="editRepairCreatedBy">Created By (optional)</label>
+            <input type="text" id="editRepairCreatedBy" name="createdBy">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="cancelRepairEdit()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- View/Edit Parts Modal -->
+  <div id="viewPartsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="partsModalTitle">Parts Details</h2>
+        <button class="modal-close" onclick="closeModal('viewPartsModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- View Mode -->
+        <div id="partsViewMode">
+          <div class="detail-group">
+            <label>Description</label>
+            <div id="partsViewDescription" class="detail-value"></div>
+          </div>
+          <div class="detail-group">
+            <label>Quantity</label>
+            <div id="partsViewQuantity" class="detail-value"></div>
+          </div>
+          <div class="detail-group">
+            <label>Date</label>
+            <div id="partsViewDate" class="detail-value"></div>
+          </div>
+          <div class="detail-group">
+            <label>Cost</label>
+            <div id="partsViewCost" class="detail-value"></div>
+          </div>
+          <div class="detail-group">
+            <label>Note</label>
+            <div id="partsViewNote" class="detail-value"></div>
+          </div>
+          <div class="detail-group">
+            <label>Created By</label>
+            <div id="partsViewCreatedBy" class="detail-value"></div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('viewPartsModal')">Close</button>
+            <button type="button" class="btn btn-primary" onclick="enablePartsEdit()">Edit</button>
+          </div>
+        </div>
+        <!-- Edit Mode -->
+        <form id="partsEditMode" style="display: none;" onsubmit="submitEditParts(event)">
+          <input type="hidden" id="editPartsId" name="id">
+          <div class="form-group">
+            <label for="editPartsDescription">Description *</label>
+            <input type="text" id="editPartsDescription" name="description" required>
+          </div>
+          <div class="form-group">
+            <label for="editPartsQuantity">Quantity (optional)</label>
+            <input type="number" id="editPartsQuantity" name="quantity" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label for="editPartsUnit">Unit (optional)</label>
+            <input type="text" id="editPartsUnit" name="unit">
+          </div>
+          <div class="form-group">
+            <label for="editPartsDate">Date *</label>
+            <input type="date" id="editPartsDate" name="date" required>
+          </div>
+          <div class="form-group">
+            <label for="editPartsCost">Cost (optional)</label>
+            <input type="number" id="editPartsCost" name="cost" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label for="editPartsNote">Note (optional)</label>
+            <textarea id="editPartsNote" name="note" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="editPartsCreatedBy">Created By (optional)</label>
+            <input type="text" id="editPartsCreatedBy" name="createdBy">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="cancelPartsEdit()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script src="/app.js"></script>
   <script>
     // Maintenance tab switching
@@ -317,31 +457,155 @@
       }
     }
 
-    async function deleteRepair(repairId) {
-      if (!confirm('Delete this repair log?')) return;
+    // Repair View/Edit Functions
+    function viewRepair(id, description, date, cost, note, createdBy) {
+      // Store data for edit mode
+      window.currentRepair = { id, description, date, cost, note, createdBy };
+
+      // Populate view mode
+      document.getElementById('repairViewDescription').textContent = description;
+      document.getElementById('repairViewDate').textContent = new Date(date).toLocaleDateString();
+      document.getElementById('repairViewCost').textContent = cost !== null ? '$' + parseFloat(cost).toFixed(2) : '—';
+      document.getElementById('repairViewNote').textContent = note || '—';
+      document.getElementById('repairViewCreatedBy').textContent = createdBy || '—';
+
+      // Show view mode, hide edit mode
+      document.getElementById('repairViewMode').style.display = 'block';
+      document.getElementById('repairEditMode').style.display = 'none';
+
+      // Open modal
+      document.getElementById('viewRepairModal').style.display = 'flex';
+    }
+
+    function enableRepairEdit() {
+      const repair = window.currentRepair;
+
+      // Populate edit form
+      document.getElementById('editRepairId').value = repair.id;
+      document.getElementById('editRepairDescription').value = repair.description;
+      document.getElementById('editRepairDate').value = repair.date;
+      document.getElementById('editRepairCost').value = repair.cost !== null ? repair.cost : '';
+      document.getElementById('editRepairNote').value = repair.note || '';
+      document.getElementById('editRepairCreatedBy').value = repair.createdBy || '';
+
+      // Show edit mode, hide view mode
+      document.getElementById('repairViewMode').style.display = 'none';
+      document.getElementById('repairEditMode').style.display = 'block';
+    }
+
+    function cancelRepairEdit() {
+      // Show view mode, hide edit mode
+      document.getElementById('repairViewMode').style.display = 'block';
+      document.getElementById('repairEditMode').style.display = 'none';
+    }
+
+    async function submitEditRepair(event) {
+      event.preventDefault();
+      const form = event.target;
+      const formData = new FormData(form);
+      const id = formData.get('id');
+
+      const data = {
+        description: formData.get('description'),
+        date: formData.get('date'),
+        cost: formData.get('cost') || null,
+        note: formData.get('note') || null,
+        createdBy: formData.get('createdBy') || null,
+      };
+
       try {
-        const res = await fetch(`/maintenance/repairs/${repairId}`, {
-          method: 'DELETE',
+        const res = await fetch(`/maintenance/repairs/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
         });
         if (res.ok) {
           window.location.reload();
+        } else {
+          const error = await res.json();
+          alert('Error updating repair: ' + JSON.stringify(error));
         }
       } catch (error) {
-        alert('Error deleting repair');
+        alert('Error updating repair');
       }
     }
 
-    async function deleteParts(partsId) {
-      if (!confirm('Delete this parts entry?')) return;
+    // Parts View/Edit Functions
+    function viewParts(id, description, quantity, unit, date, cost, note, createdBy) {
+      // Store data for edit mode
+      window.currentPart = { id, description, quantity, unit, date, cost, note, createdBy };
+
+      // Populate view mode
+      document.getElementById('partsViewDescription').textContent = description;
+      const qtyText = quantity !== null ? quantity + (unit ? ' ' + unit : '') : '—';
+      document.getElementById('partsViewQuantity').textContent = qtyText;
+      document.getElementById('partsViewDate').textContent = new Date(date).toLocaleDateString();
+      document.getElementById('partsViewCost').textContent = cost !== null ? '$' + parseFloat(cost).toFixed(2) : '—';
+      document.getElementById('partsViewNote').textContent = note || '—';
+      document.getElementById('partsViewCreatedBy').textContent = createdBy || '—';
+
+      // Show view mode, hide edit mode
+      document.getElementById('partsViewMode').style.display = 'block';
+      document.getElementById('partsEditMode').style.display = 'none';
+
+      // Open modal
+      document.getElementById('viewPartsModal').style.display = 'flex';
+    }
+
+    function enablePartsEdit() {
+      const part = window.currentPart;
+
+      // Populate edit form
+      document.getElementById('editPartsId').value = part.id;
+      document.getElementById('editPartsDescription').value = part.description;
+      document.getElementById('editPartsQuantity').value = part.quantity !== null ? part.quantity : '';
+      document.getElementById('editPartsUnit').value = part.unit || '';
+      document.getElementById('editPartsDate').value = part.date;
+      document.getElementById('editPartsCost').value = part.cost !== null ? part.cost : '';
+      document.getElementById('editPartsNote').value = part.note || '';
+      document.getElementById('editPartsCreatedBy').value = part.createdBy || '';
+
+      // Show edit mode, hide view mode
+      document.getElementById('partsViewMode').style.display = 'none';
+      document.getElementById('partsEditMode').style.display = 'block';
+    }
+
+    function cancelPartsEdit() {
+      // Show view mode, hide edit mode
+      document.getElementById('partsViewMode').style.display = 'block';
+      document.getElementById('partsEditMode').style.display = 'none';
+    }
+
+    async function submitEditParts(event) {
+      event.preventDefault();
+      const form = event.target;
+      const formData = new FormData(form);
+      const id = formData.get('id');
+
+      const data = {
+        description: formData.get('description'),
+        quantity: formData.get('quantity') || null,
+        unit: formData.get('unit') || null,
+        date: formData.get('date'),
+        cost: formData.get('cost') || null,
+        note: formData.get('note') || null,
+        createdBy: formData.get('createdBy') || null,
+      };
+
       try {
-        const res = await fetch(`/maintenance/parts/${partsId}`, {
-          method: 'DELETE',
+        const res = await fetch(`/maintenance/parts/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
         });
         if (res.ok) {
           window.location.reload();
+        } else {
+          const error = await res.json();
+          alert('Error updating parts: ' + JSON.stringify(error));
         }
       } catch (error) {
-        alert('Error deleting parts entry');
+        alert('Error updating parts');
       }
     }
 
