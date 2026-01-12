@@ -473,6 +473,22 @@ router.post('/pickup', async (req, res, next) => {
       console.error('[Routes] Error syncing inventory state to sheets:', error.message);
     }
 
+    // Auto-fulfill any open request batch when ANY pickup is made
+    const openRequestBatch = await prisma.requestBatch.findFirst({
+      where: { status: 'OPEN' },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (openRequestBatch) {
+      await prisma.requestBatch.update({
+        where: { id: openRequestBatch.id },
+        data: {
+          status: 'FULFILLED',
+          fulfilledAt: new Date(),
+        },
+      });
+    }
+
     res.redirect('/');
   } catch (error) {
     next(error);

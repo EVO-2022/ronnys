@@ -223,7 +223,7 @@ Different chemicals have different increment rules based on their unit type and 
 
 ### Operation Rules
 
-- **Pickup**: Always adds to SHELF only, whole numbers only (1.0 increment)
+- **Pickup**: Always adds to SHELF only, whole numbers only (1.0 increment). Automatically fulfills any open request when a pickup is made.
 - **Request**: Whole numbers only (1.0 increment), doesn't change inventory
 - **Update**: Supports partial quantities per chemical rules, sets absolute quantity for a single location (SHELF or LINE)
 
@@ -255,6 +255,11 @@ Adds quantities to shelf inventory.
 - Quantities must be whole numbers (validated with `validateWholeQuantity`)
 - Always adds to SHELF location
 - Creates ActivityLog entries for each pickup
+
+**Behavior:**
+- Automatically fulfills any open request batch when ANY pickup is made
+- This happens regardless of whether the pickup matches the requested items
+- The open request is marked as FULFILLED with timestamp
 
 ### POST `/request`
 Creates a batch request for multiple chemicals.
